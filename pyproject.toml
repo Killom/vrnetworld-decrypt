@@ -1,0 +1,16 @@
+[project]
+name = "vrnetworld-decrypt"
+version = "0.1.0"
+description = "Entschlüsselt Codieren128-Felder einer VR-NetWorld-SQLite-Datei"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[project.scripts]
+vrnetworld-decrypt = "vrnetworld_decrypt.__main__:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
