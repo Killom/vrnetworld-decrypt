@@ -1,4 +1,4 @@
-"""Kommandozeile: python -m vrnetworld_decrypt QUELLE ZIEL"""
+"""Kommandozeile: python vrnetworld-decrypt.py QUELLE ZIEL"""
 
 from __future__ import annotations
 
@@ -10,7 +10,20 @@ from .cipher import DEFAULT_KEY
 from .database import decrypt_database
 
 
+def configure_stdio() -> None:
+    """Windows-Konsolen nutzen oft nicht UTF-8. Die Ausgabe soll daran nicht scheitern."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (OSError, ValueError):
+            continue
+
+
 def main(argv: list[str] | None = None) -> int:
+    configure_stdio()
     parser = argparse.ArgumentParser(
         description=(
             "Entschlüsselt die Codieren128-Felder einer VR-NetWorld-SQLite-Datei "
@@ -33,6 +46,8 @@ def main(argv: list[str] | None = None) -> int:
         f"{counts['examined']} Textfelder geprüft, "
         f"geschrieben nach {args.destination}"
     )
+    if counts["warning"]:
+        print(counts["warning"], file=sys.stderr)
     return 0
 
 

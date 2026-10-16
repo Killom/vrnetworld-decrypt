@@ -1,6 +1,16 @@
+import os
+import stat
+import tempfile
 import unittest
+from pathlib import Path
 
 from vrnetworld_decrypt import codieren128, decrypt_field, encrypt_field
+from vrnetworld_decrypt.database import (
+    restrict_to_user,
+    same_path,
+    windows_acl_command,
+    windows_principal,
+)
 from vrnetworld_decrypt.framing import unwrap_text
 
 
@@ -26,6 +36,33 @@ class CipherVectors(unittest.TestCase):
         self.assertIn(b"\x58", stored)
         self.assertNotIn(b"\x00", stored)
         self.assertEqual(decrypt_field(stored), sample)
+
+
+class PlatformPaths(unittest.TestCase):
+    def test_same_path_ignores_case_where_the_platform_does(self):
+        left = Path.cwd() / "VrNws.db"
+        right = Path.cwd() / "vrnws.db"
+        self.assertEqual(same_path(left, right), os.path.normcase("A") == os.path.normcase("a"))
+
+    def test_windows_acl_names_the_account(self):
+        self.assertEqual(
+            windows_principal({"USERDOMAIN": "PC", "USERNAME": "Martin"}),
+            "PC\\Martin",
+        )
+        command = windows_acl_command(Path("klartext.db"), "PC\\Martin")
+        self.assertEqual(command[0], "icacls")
+        self.assertIn("/inheritance:r", command)
+        self.assertEqual(command[-1], "PC\\Martin:(R,W)")
+
+    def test_posix_copy_is_owner_only(self):
+        if os.name != "posix":
+            self.skipTest("Modus 0600 gilt nur unter Unix")
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / "klartext.db"
+            target.write_bytes(b"")
+            os.chmod(target, 0o644)
+            self.assertIsNone(restrict_to_user(target))
+            self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
 
 
 if __name__ == "__main__":
